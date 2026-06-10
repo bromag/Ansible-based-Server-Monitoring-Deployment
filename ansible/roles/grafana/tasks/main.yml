@@ -45,12 +45,6 @@
     state: present
     update_cache: true
 
-- name: Ensure Grafana is enabled and running
-  ansible.builtin.service:
-    name: grafana-server
-    state: started
-    enabled: true
-
 - name: Create Grafana provisioning datasource directory
   ansible.builtin.file:
     path: /etc/grafana/provisioning/datasources
@@ -67,7 +61,6 @@
     group: grafana
     mode: "0644"
   notify: Restart Grafana
-
 
 - name: Create Grafana dashboards directory
   ansible.builtin.file:
@@ -94,7 +87,7 @@
     mode: "0644"
   notify: Restart Grafana
 
-- name: Provision Node Exporter dashboard
+- name: Provision Grafana dashboards
   ansible.builtin.copy:
     src: provisioning/dashboards/node-exporter.yml
     dest: /etc/grafana/provisioning/dashboards/node-exporter.yml
@@ -102,3 +95,9 @@
     group: grafana
     mode: "0644"
   notify: Restart Grafana
+
+- name: Ensure Grafana is enabled and running
+  ansible.builtin.service:
+    name: grafana-server
+    state: started
+    enabled: true

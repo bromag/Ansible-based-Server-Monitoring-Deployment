@@ -12,6 +12,20 @@ scrape_configs:
     static_configs:
       - targets:
           - "{{ web_server_ip }}:9100"
+        labels:
+          server: "web-server"
+
+      - targets:
           - "{{ app_server_ip }}:9100"
+        labels:
+          server: "app-server"
+
+      - targets:
           - "{{ db_server_ip }}:9100"
+        labels:
+          server: "db-server"
+
+      - targets:
           - "{{ monitoring_server_ip }}:9100"
+        labels:
+          server: "monitoring-server"
