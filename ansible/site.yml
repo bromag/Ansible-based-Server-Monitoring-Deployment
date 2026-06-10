@@ -1,0 +1,37 @@
+---
+- name: Configure all servers
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: Configure web server
+  hosts: web
+  become: true
+  roles:
+    - nginx
+
+- name: Configure database server
+  hosts: db
+  become: true
+  roles:
+    - mariadb
+
+- name: Configure app server
+  hosts: app
+  become: true
+  roles:
+    - python_app
+
+- name: Configure node exporter on all servers
+  hosts: all
+  become: true
+  roles:
+    - node_exporter
+
+- name: Configure monitoring server
+  hosts: monitoring
+  become: true
+  roles:
+    - prometheus
+    - grafana
