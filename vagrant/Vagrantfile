@@ -1,0 +1,47 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "loch-tech/debian-12-bookworm-ch"
+
+  servers = [
+    {
+      name: "web-server",
+      ip: "10.211.55.21",
+      memory: 1024,
+      cpus: 1
+    },
+    {
+      name: "app-server",
+      ip: "10.211.55.22",
+      memory: 1024,
+      cpus: 1
+    },
+    {
+      name: "db-server",
+      ip: "10.211.55.23",
+      memory: 1024,
+      cpus: 1
+    },
+    {
+      name: "monitoring-server",
+      ip: "10.211.55.24",
+      memory: 2048,
+      cpus: 2
+    }
+  ]
+
+  servers.each do |server|
+    config.vm.define server[:name] do |node|
+      node.vm.hostname = server[:name]
+
+      node.vm.network "private_network", ip: server[:ip]
+
+      node.vm.provider "parallels" do |prl|
+        prl.name = server[:name]
+        prl.memory = server[:memory]
+        prl.cpus = server[:cpus]
+      end
+    end
+  end
+end
