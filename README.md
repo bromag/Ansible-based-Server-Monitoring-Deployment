@@ -50,4 +50,4 @@ text Benutzer    |    | Webbrowser Port 3000    v Monitoring-Server Grafana + Pr
 - Starten und Aktivieren aller benötigten Services
 
 
-![Alt text](img/ansible-automation.png)
+![Alt text](imges/ansible-automation.png)
