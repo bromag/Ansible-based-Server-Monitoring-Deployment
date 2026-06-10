@@ -48,3 +48,6 @@ text Benutzer    |    | Webbrowser Port 3000    v Monitoring-Server Grafana + Pr
 - Import eines fertigen Grafana Dashboards
 - Konfiguration der benötigten Firewall-Regeln
 - Starten und Aktivieren aller benötigten Services
+
+
+![Alt text](img/ansible-automation.png)
