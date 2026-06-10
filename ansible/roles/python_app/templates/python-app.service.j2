@@ -1,0 +1,18 @@
+[Unit]
+Description=Ansible Monitoring Python App
+After=network.target
+
+[Service]
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_dir }}
+Environment="APP_DB_HOST={{ app_db_host }}"
+Environment="APP_DB_NAME={{ app_db_name }}"
+Environment="APP_DB_USER={{ app_db_user }}"
+Environment="APP_DB_PASSWORD={{ app_db_password }}"
+ExecStart={{ app_dir }}/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:{{ app_port }} app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
