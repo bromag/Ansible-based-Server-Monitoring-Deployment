@@ -5,14 +5,14 @@ app_group: appuser
 app_dir: /opt/ansible-monitoring-app
 app_port: 5000
 
-app_host: "10.211.55.33"
-
-app_db_host: "10.211.55.34"
 app_db_name: appdb
 app_db_user: appuser
 app_db_password: apppassword
 
-web_server_ip: "10.211.55.35"
-app_server_ip: "10.211.55.33"
-db_server_ip: "10.211.55.34"
-monitoring_server_ip: "10.211.55.32"
+web_server_ip: "{{ hostvars[groups['web'][0]].ansible_host }}"
+app_server_ip: "{{ hostvars[groups['app'][0]].ansible_host }}"
+db_server_ip: "{{ hostvars[groups['db'][0]].ansible_host }}"
+monitoring_server_ip: "{{ hostvars[groups['monitoring'][0]].ansible_host }}"
+
+app_host: "{{ app_server_ip }}"
+app_db_host: "{{ db_server_ip }}"

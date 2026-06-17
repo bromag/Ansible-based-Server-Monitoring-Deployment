@@ -14,13 +14,13 @@
     enabled: true
 
 - name: Create application database
-  community.mysql.mysql_db:
+  ansible.mysql.mysql_db:
     name: appdb
     state: present
     login_unix_socket: /run/mysqld/mysqld.sock
 
 - name: Create application database user
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: appuser
     password: apppassword
     priv: "appdb.*:ALL"
