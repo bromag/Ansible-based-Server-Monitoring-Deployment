@@ -30,7 +30,7 @@ Ziel des Projektes ist eine automatisierte und reproduzierbare Testumgebung, die
 
 ### Datenfluss der Webapplikation
 
-![Applikationsarchitektur](images/Diagram-Applikationsarchitektur.png){ width=80% }
+![Applikationsarchitektur](images/Diagram-Applikationsarchitektur.png)
 
 Das Diagramm zeigt den Datenfluss der Webapplikation. Der Benutzer greift über den Browser auf den `web-server` zu. Nginx nimmt die Anfrage auf Port 80 entgegen und leitet sie auf Port 5000 an die Python-Webapplikation auf dem `app-server` weiter. Benötigt die Anwendung Daten, verbindet sie sich über Port 3306 mit MariaDB auf dem `db-server`.
 
