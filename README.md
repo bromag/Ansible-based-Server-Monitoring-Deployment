@@ -2,46 +2,53 @@
 
 ## 1. Projektübersicht
 
-In diesem Projekt wird mit Ansible eine automatisierte Server- und Monitoring-Umgebung aufgebaut. Die Umgebung besteht aus vier Linux-Servern mit unterschiedlichen Aufgaben:
+In diesem Projekt wurde eine vollständige Server- und Monitoring-Umgebung mit Ansible automatisiert aufgebaut.
+
+Die Umgebung besteht aus vier Linux-Servern:
 
 - `web-server`
 - `app-server`
 - `db-server`
 - `monitoring-server`
 
-Die virtuelle Testumgebung wird mit Vagrant erstellt. Unterstützt werden Parallels Desktop, VirtualBox sowie VMware Fusion beziehungsweise VMware Workstation.
+Die virtuellen Maschinen werden mit Vagrant erstellt. Unterstützt werden:
 
-Ansible übernimmt anschliessend die Installation und Konfiguration der gesamten Umgebung. Dazu gehören Nginx, eine Python-Webapplikation, MariaDB, Prometheus, Grafana und Node Exporter.
+- Parallels Desktop
+- VirtualBox
+- VMware Fusion beziehungsweise VMware Workstation
 
-Ziel ist eine reproduzierbare, automatisierte und möglichst einfach ausführbare Bereitstellung der gesamten Umgebung.
+Ansible übernimmt danach die Installation und Konfiguration aller benötigten Dienste.
 
 ---
 
 ## 2. Ziel des Projektes
 
-Folgende Komponenten werden automatisch installiert und konfiguriert:
+Ziel des Projektes ist es, eine vollständige Testumgebung automatisch und reproduzierbar bereitzustellen.
+
+Folgende Komponenten werden installiert und konfiguriert:
 
 - Nginx als Reverse Proxy
 - Python-Webapplikation mit Flask
 - Gunicorn als Application Server
 - MariaDB als Datenbank
-- Prometheus zur Sammlung von Metriken
-- Grafana zur Visualisierung
+- Prometheus für das Monitoring
+- Grafana für die Visualisierung
 - Node Exporter auf allen Servern
-- Grafana-Datenquelle für Prometheus
-- Grafana-Dashboard für Node-Exporter-Metriken
-- systemd-Services für die Anwendungen
+
+Die Umgebung kann entweder vollständig lokal oder mit einem separaten Ansible-Server ausgeführt werden.
 
 ---
 
 ## 3. Architektur
 
-| Server | Aufgabe | Hauptkomponenten |
+| Server | Aufgabe | Komponenten |
 |---|---|---|
 | `web-server` | Einstiegspunkt für die Webapplikation | Nginx, Node Exporter |
 | `app-server` | Ausführung der Webapplikation | Python, Flask, Gunicorn, Node Exporter |
 | `db-server` | Speicherung der Applikationsdaten | MariaDB, Node Exporter |
 | `monitoring-server` | Überwachung und Visualisierung | Prometheus, Grafana, Node Exporter |
+
+### Datenfluss der Webapplikation
 
 ```text
 Benutzer
@@ -60,36 +67,38 @@ Python / Flask / Gunicorn
    v
 db-server
 MariaDB
+```
 
-monitoring-server
-Prometheus + Grafana
+### Datenfluss des Monitorings
+
+```text
+Node Exporter auf allen Servern
    |
-   | Node-Exporter-Metriken auf Port 9100
+   | Port 9100
+   v
+Prometheus
    |
-   +------> web-server
-   +------> app-server
-   +------> db-server
-   +------> monitoring-server
+   v
+Grafana
+   |
+   v
+Dashboard im Webbrowser
 ```
 
 ---
 
-## 4. Komponenten
+## 4. Umgesetzte Komponenten
 
 ### 4.1 Webserver
 
-Der `web-server` stellt den Einstiegspunkt für die Webapplikation dar.
+Auf dem `web-server` wird Nginx installiert.
 
-Nginx nimmt HTTP-Anfragen entgegen und leitet diese als Reverse Proxy an die Python-Webapplikation auf dem `app-server` weiter.
+Nginx nimmt die HTTP-Anfragen entgegen und leitet sie an die Python-Webapplikation auf dem `app-server` weiter.
+
+Die Webapplikation ist über folgende Adresse erreichbar:
 
 ```text
-Browser
-   |
-   v
-Nginx auf web-server
-   |
-   v
-Flask/Gunicorn auf app-server:5000
+http://<WEB-SERVER-IP>
 ```
 
 ### 4.2 Applikationsserver
@@ -101,10 +110,10 @@ Die Anwendung stellt folgende Endpunkte bereit:
 | Endpunkt | Funktion |
 |---|---|
 | `/` | Startseite |
-| `/health` | Prüft den Zustand der Applikation |
-| `/db` | Prüft die Verbindung zur MariaDB-Datenbank |
+| `/health` | Prüft, ob die Applikation läuft |
+| `/db` | Prüft die Verbindung zur Datenbank |
 
-Die Anwendung läuft auf Port `5000` und wird über einen systemd-Service gestartet.
+Die Anwendung läuft intern auf Port `5000`.
 
 ### 4.3 Datenbankserver
 
@@ -114,11 +123,8 @@ Ansible erstellt automatisch:
 
 - die Datenbank `appdb`
 - den Benutzer `appuser`
-- das konfigurierte Passwort
-- die erforderlichen Datenbankberechtigungen
+- die benötigten Berechtigungen
 - die Konfiguration für externe Verbindungen
-
-Für eine produktive Umgebung sollte das Passwort später mit Ansible Vault geschützt werden.
 
 ### 4.4 Monitoring-Server
 
@@ -136,24 +142,20 @@ Grafana ist erreichbar unter:
 http://<MONITORING-IP>:3000
 ```
 
-Grafana verwendet Prometheus als automatisch provisionierte Datenquelle.
+### 4.5 Node Exporter
 
----
+Node Exporter wird auf allen vier Servern installiert.
 
-## 5. Node Exporter
-
-Node Exporter wird auf allen vier Servern installiert und liefert unter anderem folgende Metriken:
+Er liefert unter anderem folgende Informationen:
 
 - CPU-Auslastung
-- RAM-Verbrauch
+- Arbeitsspeicher
 - Festplattenbelegung
 - Netzwerkverkehr
 - Uptime
-- Load Average
-- Dateisysteminformationen
-- Prozessinformationen
+- System Load
 
-Die Metriken sind auf jedem Server verfügbar unter:
+Die Metriken sind auf jedem Server unter folgender Adresse verfügbar:
 
 ```text
 http://<SERVER-IP>:9100/metrics
@@ -161,68 +163,11 @@ http://<SERVER-IP>:9100/metrics
 
 ---
 
-## 6. Datenfluss
-
-### Webapplikation
-
-```text
-Benutzer
-   |
-   v
-Nginx auf web-server
-   |
-   v
-Flask/Gunicorn auf app-server
-   |
-   v
-MariaDB auf db-server
-```
-
-### Monitoring
-
-```text
-Node Exporter auf allen Servern
-   |
-   v
-Prometheus
-   |
-   v
-Grafana
-   |
-   v
-Dashboard im Webbrowser
-```
-
----
-
-## 7. Automatisierung mit Ansible
-
-Ansible automatisiert:
-
-- allgemeine Systemvorbereitung
-- Installation von Nginx
-- Konfiguration des Reverse Proxys
-- Installation von Python
-- Erstellung einer Python Virtual Environment
-- Installation von Flask und Gunicorn
-- Bereitstellung der Webapplikation
-- Erstellung des systemd-Services
-- Installation und Konfiguration von MariaDB
-- Erstellung von Datenbank und Benutzer
-- Installation von Node Exporter
-- Installation und Konfiguration von Prometheus
-- Erstellung der Prometheus-Targets
-- Installation und Konfiguration von Grafana
-- Provisionierung der Prometheus-Datenquelle
-- Bereitstellung des Grafana-Dashboards
-- Aktivierung und Start aller Services
-
----
-
-## 8. Projektstruktur
+## 5. Projektstruktur
 
 ```text
 Ansible-based-Server-Monitoring-Deployment/
+├── .gitignore
 ├── README.md
 ├── start-lab.sh
 ├── start-vagrant-only.sh
@@ -236,7 +181,7 @@ Ansible-based-Server-Monitoring-Deployment/
     ├── ansible.cfg
     ├── site.yml
     ├── inventory/
-    │   └── hosts.ini
+    │   └── hosts.ini.example
     ├── group_vars/
     │   └── all.yml
     └── roles/
@@ -251,108 +196,36 @@ Ansible-based-Server-Monitoring-Deployment/
 
 ---
 
-## 9. Ansible-Konfiguration
+## 6. Automatisierung mit Ansible
 
-Datei:
+Ansible übernimmt folgende Aufgaben:
 
-```text
-ansible/ansible.cfg
-```
-
-```ini
-[defaults]
-inventory = inventory/hosts.ini
-host_key_checking = False
-retry_files_enabled = False
-roles_path = roles
-stdout_callback = default
-result_format = yaml
-
-[ssh_connection]
-pipelining = True
-```
-
----
-
-## 10. Globale Variablen
-
-Datei:
-
-```text
-ansible/group_vars/all.yml
-```
-
-```yaml
----
-app_name: ansible-monitoring-app
-app_user: appuser
-app_group: appuser
-app_dir: /opt/ansible-monitoring-app
-app_port: 5000
-
-app_db_name: appdb
-app_db_user: appuser
-app_db_password: apppassword
-
-web_server_ip: "{{ hostvars[groups['web'][0]].ansible_host }}"
-app_server_ip: "{{ hostvars[groups['app'][0]].ansible_host }}"
-db_server_ip: "{{ hostvars[groups['db'][0]].ansible_host }}"
-monitoring_server_ip: "{{ hostvars[groups['monitoring'][0]].ansible_host }}"
-
-app_host: "{{ app_server_ip }}"
-app_db_host: "{{ db_server_ip }}"
-```
-
-Die IP-Adressen werden dynamisch aus dem Inventory übernommen und müssen nicht fest in dieser Datei eingetragen werden.
+- Vorbereitung der Linux-Server
+- Installation von Nginx
+- Konfiguration des Reverse Proxys
+- Installation von Python
+- Installation von Flask und Gunicorn
+- Bereitstellung der Webapplikation
+- Erstellung des systemd-Services
+- Installation und Konfiguration von MariaDB
+- Erstellung der Datenbank und des Benutzers
+- Installation von Node Exporter
+- Installation und Konfiguration von Prometheus
+- Konfiguration der Prometheus-Targets
+- Installation und Konfiguration von Grafana
+- Provisionierung der Prometheus-Datenquelle
+- Bereitstellung des Grafana-Dashboards
+- Start und Aktivierung aller Services
 
 ---
 
-## 11. Inventory
+## 7. Ansible-Rollen
 
-Das Inventory wird durch die Bash-Scripts automatisch erstellt.
-
-```ini
-[web]
-web-server ansible_host=10.211.55.35
-
-[app]
-app-server ansible_host=10.211.55.33
-
-[db]
-db-server ansible_host=10.211.55.34
-
-[monitoring]
-monitoring-server ansible_host=10.211.55.32
-
-[all:vars]
-ansible_user=vagrant
-ansible_python_interpreter=/usr/bin/python3
-```
-
-Empfohlene `.gitignore`-Einträge:
-
-```gitignore
-ansible/inventory/hosts.ini
-.vagrant/
-```
-
----
-
-## 12. Ansible-Rollen
+Die Konfiguration wurde in verschiedene Ansible-Rollen aufgeteilt.
 
 ### `common`
 
-Installiert allgemeine Pakete:
-
-- curl
-- wget
-- vim
-- htop
-- net-tools
-- ca-certificates
-- gnupg
-- lsb-release
-- software-properties-common
+Installiert allgemeine Pakete und bereitet die Server vor.
 
 ### `nginx`
 
@@ -360,24 +233,11 @@ Installiert Nginx und erstellt die Reverse-Proxy-Konfiguration.
 
 ### `app`
 
-Installiert und konfiguriert:
-
-- Python
-- Virtual Environment
-- Flask
-- Gunicorn
-- Applikationsdateien
-- systemd-Service
+Installiert und konfiguriert die Python-Webapplikation.
 
 ### `mariadb`
 
-Installiert MariaDB und erstellt Datenbank sowie Benutzer.
-
-Verwendete Collection:
-
-```text
-ansible.mysql
-```
+Installiert MariaDB und erstellt Datenbank und Benutzer.
 
 ### `node_exporter`
 
@@ -385,80 +245,29 @@ Installiert Node Exporter auf allen Servern.
 
 ### `prometheus`
 
-Installiert Prometheus und erstellt die Target-Konfiguration.
+Installiert Prometheus und konfiguriert die Monitoring-Targets.
 
 ### `grafana`
 
-Installiert Grafana und provisioniert:
-
-- Prometheus-Datenquelle
-- Dashboard-Verzeichnis
-- Dashboard-Provider
-- Node-Exporter-Dashboard
+Installiert Grafana und richtet die Prometheus-Datenquelle sowie das Dashboard ein.
 
 ---
 
-## 13. Zentrales Playbook
+## 8. Lokale Komplettausführung
 
-Datei:
+Für die vollständige lokale Ausführung wird das Script `start-lab.sh` verwendet.
 
-```text
-ansible/site.yml
-```
+Das Script:
 
-```yaml
----
-- name: Configure all servers
-  hosts: all
-  become: true
-  roles:
-    - common
-    - node_exporter
+1. fragt den Virtualisierungsanbieter ab
+2. startet die vier Vagrant-VMs
+3. ermittelt die IP-Adressen
+4. erstellt das Ansible-Inventory
+5. testet die Verbindungen
+6. führt das Ansible-Playbook aus
+7. prüft die wichtigsten Services
 
-- name: Configure web server
-  hosts: web
-  become: true
-  roles:
-    - nginx
-
-- name: Configure application server
-  hosts: app
-  become: true
-  roles:
-    - app
-
-- name: Configure database server
-  hosts: db
-  become: true
-  roles:
-    - mariadb
-
-- name: Configure monitoring server
-  hosts: monitoring
-  become: true
-  roles:
-    - prometheus
-    - grafana
-```
-
----
-
-## 14. Lokale Komplettausführung
-
-Das Script `start-lab.sh` führt lokal die vollständige Installation aus.
-
-Es übernimmt:
-
-1. Auswahl des Virtualisierungsanbieters
-2. Start der Vagrant-VMs
-3. Ermittlung der IP-Adressen
-4. Ermittlung der Vagrant-SSH-Keys
-5. Erstellung des Inventory
-6. Installation der Ansible-Collection
-7. Syntaxprüfung
-8. Verbindungstest
-9. Ausführung des Playbooks
-10. Prüfung der Services
+### Ausführung
 
 ```bash
 chmod +x start-lab.sh
@@ -467,87 +276,110 @@ chmod +x start-lab.sh
 
 Das Script wird ohne `sudo` gestartet.
 
----
-
-## 15. Unterstützte Virtualisierungsanbieter
-
-| Anbieter | Provider |
-|---|---|
-| Parallels Desktop | `parallels` |
-| VirtualBox | `virtualbox` |
-| VMware | `vmware_desktop` |
-
-Vor einem Providerwechsel:
-
-```bash
-cd vagrant
-vagrant destroy -f
-```
-
----
-
-## 16. Getrennte Ausführung mit Ansible-Server
-
-Der getrennte Ablauf besteht aus drei Scripts.
-
-### 16.1 `prepare-ansible-server.sh`
-
-Wird auf dem Ansible-Server ausgeführt.
-
-Aufgaben:
-
-- `apt update`
-- `apt upgrade`
-- Installation von Git, Ansible, Python und SSH
-- Erstellung eines SSH-Schlüsselpaares
-
-Key-Pfade:
+Anschliessend wird der gewünschte Provider ausgewählt:
 
 ```text
-~/.ssh/ansible_lab
-~/.ssh/ansible_lab.pub
+1) Parallels Desktop
+2) VirtualBox
+3) VMware Fusion / Workstation
 ```
 
-Ausführung:
+Nach erfolgreicher Ausführung werden die Adressen der Anwendungen angezeigt.
+
+---
+
+## 9. Getrennte Ausführung mit Ansible-Server
+
+Die getrennte Ausführung besteht aus drei Schritten.
+
+### 9.1 Ansible-Server vorbereiten
+
+Auf dem Ansible-Server wird zuerst folgendes Script ausgeführt:
 
 ```bash
 chmod +x prepare-ansible-server.sh
 sudo ./prepare-ansible-server.sh
 ```
 
-### 16.2 `start-vagrant-only.sh`
+Das Script:
 
-Wird auf dem lokalen Computer ausgeführt.
+- aktualisiert den Server
+- installiert Git, Ansible, Python und SSH
+- erstellt einen SSH-Key für das Projekt
 
-Aufgaben:
+Die SSH-Keys werden unter folgenden Pfaden erstellt:
 
-- Auswahl des Providers
-- Download des öffentlichen Keys vom Ansible-Server
-- Erstellung der vier VMs
-- Installation des öffentlichen Keys auf allen VMs
-- Ausgabe der IP-Adressen
+```text
+~/.ssh/ansible_lab
+~/.ssh/ansible_lab.pub
+```
 
-Es führt kein Playbook aus.
+Der private Key bleibt auf dem Ansible-Server.
+
+Der öffentliche Key wird später auf die vier VMs übertragen.
+
+### 9.2 Vagrant-VMs erstellen
+
+Auf dem lokalen Computer wird danach folgendes Script ausgeführt:
 
 ```bash
 chmod +x start-vagrant-only.sh
 ./start-vagrant-only.sh
 ```
 
-### 16.3 `deploy-from-ansible-server.sh`
+Das Script:
 
-Wird auf dem Ansible-Server ausgeführt.
+- fragt den Vagrant-Provider ab
+- fragt die Verbindung zum Ansible-Server ab
+- lädt den öffentlichen SSH-Key herunter
+- erstellt die vier VMs
+- installiert den öffentlichen Key auf allen VMs
+- zeigt die IP-Adressen der VMs an
 
-Aufgaben:
+Folgende Angaben werden benötigt:
 
-- Klonen oder Aktualisieren des Repositorys über HTTPS
-- Abfrage der vier VM-IP-Adressen
-- Erstellung des Inventory
-- Installation von `ansible.mysql`
-- Syntaxprüfung
-- SSH-Verbindungstest
-- Ausführung des Playbooks
-- Prüfung der Services
+```text
+IP-Adresse oder Hostname des Ansible-Servers
+SSH-Benutzer des Ansible-Servers
+Pfad zum öffentlichen SSH-Key
+```
+
+Der Standardpfad des öffentlichen Keys ist:
+
+```text
+~/.ssh/ansible_lab.pub
+```
+
+Wenn der Ansible-Server ebenfalls eine Vagrant-VM ist, lautet der Benutzer normalerweise `vagrant`.
+
+Danach kann eine Passwortabfrage erscheinen. Bei einer Vagrant-VM mit Standardzugangsdaten lautet das Passwort normalerweise ebenfalls `vagrant`.
+
+Nach erfolgreicher Ausführung werden die IP-Adressen angezeigt:
+
+```text
+web-server:        <IP-Adresse>
+app-server:        <IP-Adresse>
+db-server:         <IP-Adresse>
+monitoring-server: <IP-Adresse>
+```
+
+### 9.3 Deployment ausführen
+
+Auf dem Ansible-Server wird anschliessend folgendes Script ausgeführt:
+
+```bash
+chmod +x deploy-from-ansible-server.sh
+sudo ./deploy-from-ansible-server.sh
+```
+
+Das Script:
+
+- klont oder aktualisiert das GitHub-Repository
+- fragt die vier VM-IP-Adressen ab
+- erstellt das Ansible-Inventory
+- testet die SSH-Verbindungen
+- führt das Playbook aus
+- prüft die Services
 
 Repository:
 
@@ -555,36 +387,36 @@ Repository:
 https://github.com/bromag/Ansible-based-Server-Monitoring-Deployment.git
 ```
 
-Ausführung:
+Nach erfolgreicher Ausführung werden die Adressen angezeigt:
 
-```bash
-chmod +x deploy-from-ansible-server.sh
-sudo ./deploy-from-ansible-server.sh
+```text
+Webapplikation:
+  http://<WEB-IP>
+
+Prometheus:
+  http://<MONITORING-IP>:9090
+
+Grafana:
+  http://<MONITORING-IP>:3000
 ```
 
 ---
 
-## 17. Reihenfolge bei getrennter Ausführung
+## 10. Reihenfolge der getrennten Ausführung
 
-### Schritt 1
-
-Auf dem Ansible-Server:
+### Schritt 1: Ansible-Server vorbereiten
 
 ```bash
 sudo ./prepare-ansible-server.sh
 ```
 
-### Schritt 2
-
-Auf dem lokalen Computer:
+### Schritt 2: VMs erstellen
 
 ```bash
 ./start-vagrant-only.sh
 ```
 
-### Schritt 3
-
-Auf dem Ansible-Server:
+### Schritt 3: Deployment starten
 
 ```bash
 sudo ./deploy-from-ansible-server.sh
@@ -592,244 +424,239 @@ sudo ./deploy-from-ansible-server.sh
 
 ---
 
-## 18. Netzwerkvoraussetzungen
+## 11. Netzwerkvoraussetzungen
 
-Der Ansible-Server muss die vier VMs erreichen können.
+Der Ansible-Server muss die vier VMs über das Netzwerk erreichen können.
+
+Test mit Ping:
 
 ```bash
 ping <VM-IP>
 ```
 
-SSH-Test:
+Test mit SSH:
 
 ```bash
 ssh -i ~/.ssh/ansible_lab vagrant@<VM-IP>
 ```
 
-Bei Host-only-Netzwerken auf einem anderen Computer kann der Zugriff blockiert sein. Mögliche Lösungen:
+Wenn die VMs in einem Host-only-Netzwerk auf einem anderen Computer laufen, kann der Zugriff blockiert sein.
+
+Mögliche Lösungen:
 
 - Bridged Networking
-- Routing
+- Routing zwischen den Netzwerken
 - Ansible-Server im gleichen Netzwerk
-- lokale Ausführung von Ansible
+- lokale Ausführung mit `start-lab.sh`
 
 ---
 
-## 19. SSH-Authentifizierung
+## 12. Grafana verwenden
 
-Privater Key auf dem Ansible-Server:
-
-```text
-~/.ssh/ansible_lab
-```
-
-Öffentlicher Key auf den VMs:
-
-```text
-/home/vagrant/.ssh/authorized_keys
-```
-
-Der private Key darf nicht in Git gespeichert werden.
-
----
-
-## 20. Manuelle Tests
-
-```bash
-cd ansible
-ansible-inventory --graph
-ansible all -m ping
-ansible-playbook site.yml --syntax-check
-ansible-playbook site.yml
-```
-
----
-
-## 21. Service-Prüfungen
-
-```bash
-ansible web-server -b -m command -a "systemctl is-active nginx"
-ansible app-server -b -m command -a "systemctl is-active python-app"
-ansible db-server -b -m command -a "systemctl is-active mariadb"
-ansible monitoring-server -b -m command -a "systemctl is-active prometheus"
-ansible monitoring-server -b -m command -a "systemctl is-active grafana-server"
-```
-
-Erwartete Antwort:
-
-```text
-active
-```
-
----
-
-## 22. Funktionstests
-
-```bash
-curl http://<WEB-SERVER-IP>/
-curl http://<WEB-SERVER-IP>/health
-curl http://<WEB-SERVER-IP>/db
-curl http://<SERVER-IP>:9100/metrics
-```
-
-Prometheus:
-
-```text
-http://<MONITORING-IP>:9090
-```
-
-Grafana:
+Grafana ist unter folgender Adresse erreichbar:
 
 ```text
 http://<MONITORING-IP>:3000
 ```
 
----
+### Anmeldung
 
-## 23. Idempotenz
-
-Das Playbook kann mehrfach ausgeführt werden:
-
-```bash
-ansible-playbook site.yml
-```
-
-Statuswerte:
+Für die Testumgebung werden folgende Zugangsdaten verwendet:
 
 ```text
-ok
-changed
-skipped
-failed
+Benutzername: admin
+Passwort: admin
 ```
+
+Nach der ersten Anmeldung fordert Grafana dazu auf, ein neues Passwort festzulegen.
+
+Da es sich nur um eine Testumgebung handelt, kann dieser Schritt mit **Skip** übersprungen werden.
+
+In einer produktiven Umgebung muss das Standardpasswort geändert werden.
+
+### Dashboard öffnen
+
+Nach der Anmeldung:
+
+1. links **Dashboards** auswählen
+2. den Ordner **Infrastructure** öffnen
+3. **Node Exporter Full** auswählen
+4. oben beim Filter **Job** den Wert `node_exporter` auswählen
+
+Danach werden die Metriken aller vier Server angezeigt.
+
+Über den Filter **Instance** kann ein einzelner Server ausgewählt werden.
 
 ---
 
-## 24. Ansible-Lint
+## 13. Prometheus prüfen
 
-```bash
-ansible-lint
-```
-
-Beispielmeldung:
+Prometheus ist unter folgender Adresse erreichbar:
 
 ```text
-No new line character at the end of file
+http://<MONITORING-IP>:9090
 ```
 
-VS-Code-Einstellung:
+Die überwachten Systeme können unter folgender Adresse geprüft werden:
 
-```json
-"files.insertFinalNewline": true
+```text
+http://<MONITORING-IP>:9090/targets
 ```
+
+Alle Node-Exporter-Targets sollten den Status `UP` anzeigen.
 
 ---
 
-## 25. Ansible-Collection
+## 14. Funktionstests
+
+### Webapplikation
 
 ```bash
-ansible-galaxy collection install ansible.mysql
+curl http://<WEB-SERVER-IP>/
 ```
 
-Verwendete Module:
+### Health-Endpunkt
 
-```yaml
-ansible.mysql.mysql_db:
-ansible.mysql.mysql_user:
+```bash
+curl http://<WEB-SERVER-IP>/health
+```
+
+### Datenbankverbindung
+
+```bash
+curl http://<WEB-SERVER-IP>/db
+```
+
+### Node Exporter
+
+```bash
+curl http://<SERVER-IP>:9100/metrics
 ```
 
 ---
 
-## 26. Sicherheit
+## 15. Git-Ignore
 
-Umgesetzte Massnahmen:
+Die Datei `.gitignore` befindet sich im Hauptverzeichnis des Projektes.
+
+Empfohlener Inhalt:
+
+```gitignore
+# Vagrant
+.vagrant/
+
+# Dynamisch erzeugtes Ansible-Inventory
+ansible/inventory/hosts.ini
+
+# macOS
+.DS_Store
+
+# Temporäre Dateien
+*.tmp
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor-Dateien
+.vscode/
+.idea/
+
+# SSH-Keys
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+ansible_lab
+ansible_lab.pub
+
+# Umgebungsdateien und Secrets
+.env
+.env.*
+```
+
+Das echte Inventory wird automatisch erzeugt und nicht im Repository gespeichert.
+
+---
+
+## 16. Sicherheit
+
+Folgende Massnahmen wurden umgesetzt:
 
 - SSH-Key-Authentifizierung
-- privater Key bleibt auf dem Ansible-Server
-- nur der öffentliche Key wird verteilt
+- der private SSH-Key bleibt auf dem Ansible-Server
+- nur der öffentliche SSH-Key wird auf die VMs übertragen
 - `.vagrant/` wird nicht versioniert
+- das automatisch erzeugte Inventory wird nicht versioniert
 - Services laufen mit eigenen Benutzern
-- separater MariaDB-Benutzer
+- MariaDB verwendet einen eigenen Benutzer
 
-Mögliche Erweiterungen:
+Da es sich um eine Testumgebung handelt, werden teilweise einfache Standardpasswörter verwendet.
+
+Für eine produktive Umgebung wären zusätzliche Massnahmen notwendig:
 
 - Ansible Vault
-- Firewall-Regeln
-- HTTPS
-- Backups
-- zentrales Logging
 - stärkere Passwörter
+- HTTPS
+- Firewall-Regeln
+- Backups
+- eingeschränkter Zugriff auf Grafana und Prometheus
 
 ---
 
-## 27. Mögliche Erweiterungen
+## 17. Aktueller Projektstand
 
-- Blackbox Exporter
-- Alertmanager
-- Firewall-Automatisierung
-- Ansible Vault
-- eigene Grafana-Dashboards
-- Backup-Automatisierung
-- Benachrichtigungen
-
----
-
-## 28. Herausforderungen
-
-### Dynamische IP-Adressen
-
-Die IP-Adressen werden automatisch ausgelesen und in das Inventory geschrieben.
-
-### Netzwerk unter Parallels
-
-Da die statische Zusatzschnittstelle nicht zuverlässig aktiv war, werden DHCP-Adressen verwendet.
-
-### SSH-Keys
-
-Lokal werden Vagrant-Keys verwendet. Beim getrennten Ablauf wird ein gemeinsamer Ansible-Key verteilt.
-
-### Grafana-Provisionierung
-
-Nach Problemen mit einem eigenen Dashboard wurde wieder das funktionierende Standard-Dashboard verwendet.
-
-### MySQL-Module
-
-`community.mysql` wurde durch `ansible.mysql` ersetzt.
-
----
-
-## 29. Aktueller Projektstand
-
-Erfolgreich umgesetzt:
+Folgende Punkte wurden erfolgreich umgesetzt:
 
 - vier Vagrant-VMs
-- Providerwahl
-- dynamische IP-Ermittlung
-- automatisches Inventory
+- Auswahl des Virtualisierungsanbieters
+- automatische Ermittlung der IP-Adressen
+- automatische Erstellung des Inventory
 - Nginx Reverse Proxy
 - Python-Webapplikation
 - MariaDB
-- Node Exporter
+- Node Exporter auf allen Servern
 - Prometheus
 - Grafana
 - Grafana-Dashboard
 - lokale Komplettausführung
-- getrennter Ablauf mit Ansible-Server
-- gemeinsamer SSH-Key
+- getrennte Ausführung mit Ansible-Server
+- SSH-Key-Verteilung
 - automatische Service-Prüfungen
 
 ---
 
-## 30. Fazit
+## 18. Mögliche Erweiterungen
+
+Das Projekt könnte später erweitert werden mit:
+
+- Blackbox Exporter
+- Alertmanager
+- eigenen Grafana-Dashboards
+- Firewall-Automatisierung
+- Ansible Vault
+- Backup-Automatisierung
+- Benachrichtigungen bei Ausfällen
+
+---
+
+## 19. Fazit
 
 Mit dem Projekt wurde eine vollständige Server- und Monitoring-Umgebung automatisiert aufgebaut.
 
-Vagrant übernimmt die Erstellung der virtuellen Maschinen. Ansible installiert und konfiguriert die benötigten Dienste. Prometheus und Grafana ermöglichen die zentrale Überwachung aller Server.
+Vagrant erstellt die virtuellen Maschinen. Ansible installiert und konfiguriert die benötigten Dienste.
 
-Durch die Rollenstruktur bleibt das Projekt übersichtlich, reproduzierbar und erweiterbar.
+Prometheus sammelt die Systemmetriken und Grafana stellt diese übersichtlich in Dashboards dar.
+
+Durch die Aufteilung in verschiedene Rollen und Scripts bleibt das Projekt verständlich, reproduzierbar und erweiterbar.
 
 ---
 
 ## Architekturdiagramm
 
-![Architekturdiagramm der Ansible-Umgebung](images/ansible-automation.png)
+![Architekturdiagramm der Ansible-Umgebung](images/Ansible-Automation.png)
