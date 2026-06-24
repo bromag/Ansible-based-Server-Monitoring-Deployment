@@ -8,7 +8,7 @@ Die virtuellen Maschinen werden mit Vagrant erstellt. Anschliessend übernimmt A
 
 ### Gesamtarchitektur
 
-![Gesamtarchitektur](images/Ansible-Automation.png)
+![Applikationsarchitektur](images/Diagram-Applikationsarchitektur.png)
 
 Das Diagramm zeigt die gesamte Projektarchitektur. Vagrant erstellt die vier virtuellen Maschinen, während Ansible die benötigten Dienste installiert und konfiguriert. Der `web-server` leitet Anfragen an den `app-server` weiter, der wiederum mit dem `db-server` kommuniziert. Der `monitoring-server` sammelt die Systemmetriken aller Server und stellt sie in Grafana dar.
 
