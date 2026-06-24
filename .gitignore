@@ -1,0 +1,25 @@
+# Vagrant
+.vagrant/
+
+# Dynamisch erzeugtes Ansible-Inventory
+ansible/inventory/hosts.ini
+
+# macOS
+.DS_Store
+
+# Temporäre Dateien
+*.tmp
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Ansible
+*.retry
+
+# Editor-Dateien
+.vscode/
+.idea/
